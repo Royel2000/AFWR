@@ -1,0 +1,510 @@
+openapi: 3.0.3
+info:
+  title: Envío Fácil API
+  description: |
+    API del backend logístico "Envío Fácil" construida con TypeScript, Node.js,
+    Express y Clean Architecture. Implementa la máquina de estados de los envíos
+    y las Historias de Usuario HU-01, HU-02 y HU-03.
+
+    La ruta `/api/v1/envios` es un alias de `/envios`.
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+    description: Servidor local
+tags:
+  - name: Envíos
+    description: Gestión y ciclo de vida de los envíos
+
+paths:
+  /envios:
+    get:
+      tags: [Envíos]
+      summary: Lista todos los envíos
+      operationId: listOrders
+      responses:
+        '200':
+          description: Listado de envíos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderListResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+    post:
+      tags: [Envíos]
+      summary: Crea un envío en estado PREPARING
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+      responses:
+        '201':
+          description: Envío creado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Ya existe un envío con la misma guía
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: DUPLICATE_TRACKING_NUMBER
+                  message: Ya existe un envío con la guía "EF-2026-000001".
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /envios/{id}:
+    get:
+      tags: [Envíos]
+      summary: Obtiene un envío por UUID o número de guía
+      operationId: getOrder
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      responses:
+        '200':
+          description: Envío encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /envios/{id}/estado:
+    patch:
+      tags: [Envíos]
+      summary: Actualiza el estado del envío o lo cancela
+      description: |
+        Permite avanzar el envío en la máquina de estados
+        (`PREPARING` -> `IN_WAREHOUSE` -> `IN_TRANSIT`) o cancelarlo
+        enviando `estado: CANCELLED`.
+
+        Para `CANCELLED`, `motivo_cancelacion` y `usuario_responsable` son
+        obligatorios. Si el envío tiene `payment_status: PAID`, se genera una
+        nota de crédito por el monto exacto de `card_charged_amount` y se
+        notifica a Finanzas (HU-03). Si se envía `monto_nota_credito`, debe
+        coincidir exactamente con el monto cobrado; de lo contrario se retorna
+        400 Bad Request.
+
+        Intentar cancelar un envío en `IN_TRANSIT` retorna 409 Conflict.
+        La cancelación es idempotente: repetirla no duplica la solicitud ni la
+        nota de crédito.
+      operationId: updateOrderStatus
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateStatusRequest'
+            examples:
+              cancelar:
+                value:
+                  estado: CANCELLED
+                  motivo_cancelacion: El cliente solicitó la cancelación
+                  usuario_responsable: operador-01
+              cancelarConPago:
+                value:
+                  estado: CANCELLED
+                  motivo_cancelacion: Cancelación con reembolso solicitada
+                  usuario_responsable: operador-01
+                  monto_nota_credito: 99.99
+                  moneda: PEN
+              avanzarAAlmacen:
+                value:
+                  estado: IN_WAREHOUSE
+              avanzarATransito:
+                value:
+                  estado: IN_TRANSIT
+      responses:
+        '200':
+          description: Estado actualizado correctamente
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/OrderResponse'
+                  - $ref: '#/components/schemas/CancellationResponse'
+              examples:
+                cancelacion:
+                  value:
+                    data:
+                      id: 55555555-5555-4555-8555-555555555555
+                      tracking_number: EF-2026-000005
+                      package_status: CANCELLED
+                      destination_address: Calle San Martín 250, Arequipa
+                      card_charged_amount:
+                        amount: 99.99
+                        currency: PEN
+                      payment_status: PAID
+                      is_deleted: false
+                      cancellation:
+                        id: 2d20e712-f24c-4672-8c37-ee261fba8697
+                        reason: Cancelación con reembolso solicitada
+                        requested_by: operador-01
+                        requested_at: '2026-01-15T10:30:00.000Z'
+                      created_at: '2026-01-01T00:00:00.000Z'
+                      updated_at: '2026-01-15T10:30:00.000Z'
+                      credit_note:
+                        id: f5ec4e98-9ddc-4fc7-89fc-f0d3cd909e04
+                        order_id: 55555555-5555-4555-8555-555555555555
+                        amount:
+                          amount: 99.99
+                          currency: PEN
+                        reason: Cancelación con reembolso solicitada
+                        status: ISSUED
+                        issued_at: '2026-01-15T10:30:00.000Z'
+                      idempotent: false
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflicto con la máquina de estados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_ORDER_TRANSITION
+                  message: No se puede cancelar un envío que ya está en tránsito (IN_TRANSIT).
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /envios/{id}/direccion:
+    patch:
+      tags: [Envíos]
+      summary: Modifica la dirección de destino antes del despacho
+      description: |
+        HU-02. Permite modificar la dirección cuando el envío está en
+        `PREPARING` o `IN_WAREHOUSE`. Si el envío ya está en `IN_TRANSIT` o
+        `CANCELLED`, retorna 409 Conflict.
+      operationId: updateDestinationAddress
+      parameters:
+        - $ref: '#/components/parameters/OrderIdentifier'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateAddressRequest'
+            example:
+              direccion_destino: Av. Javier Prado 2020, Lima
+      responses:
+        '200':
+          description: Dirección actualizada correctamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflicto con la máquina de estados
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_ORDER_TRANSITION
+                  message: No se puede modificar la dirección de un envío que ya está en tránsito (IN_TRANSIT).
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  parameters:
+    OrderIdentifier:
+      name: id
+      in: path
+      required: true
+      description: UUID interno del envío o número de guía con formato EF-AAAA-NNNNNN
+      schema:
+        type: string
+        example: 11111111-1111-4111-8111-111111111111
+
+  responses:
+    BadRequest:
+      description: Datos incompletos o formato inválido
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          examples:
+            datosIncompletos:
+              value:
+                error:
+                  code: VALIDATION_ERROR
+                  message: El campo motivo_cancelacion es obligatorio para cancelar un envío.
+            guiaInvalida:
+              value:
+                error:
+                  code: INVALID_TRACKING_NUMBER
+                  message: 'Formato de guía inválido: "ABC-123". El formato esperado es EF-AAAA-NNNNNN.'
+            montoIncorrecto:
+              value:
+                error:
+                  code: CREDIT_NOTE_AMOUNT_MISMATCH
+                  message: El monto de la nota de crédito no coincide con el monto cobrado. Esperado: 150.5 PEN; recibido: 100 PEN.
+                  details:
+                    expected:
+                      amount: 150.5
+                      currency: PEN
+                    received:
+                      amount: 100
+                      currency: PEN
+    NotFound:
+      description: Envío no encontrado
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: ORDER_NOT_FOUND
+              message: No se encontró el envío "11111111-1111-4111-8111-111111111111".
+    InternalServerError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: INTERNAL_SERVER_ERROR
+              message: Ocurrió un error interno en el servidor.
+
+  schemas:
+    Money:
+      type: object
+      required: [amount, currency]
+      properties:
+        amount:
+          type: number
+          format: double
+          minimum: 0
+          example: 150.5
+        currency:
+          type: string
+          enum: [PEN, USD]
+          example: PEN
+
+    CancellationRequest:
+      type: object
+      required: [id, reason, requested_by, requested_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          minLength: 5
+          maxLength: 500
+        requested_by:
+          type: string
+        requested_at:
+          type: string
+          format: date-time
+
+    CreditNote:
+      type: object
+      required: [id, order_id, amount, reason, status, issued_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        order_id:
+          type: string
+          format: uuid
+        amount:
+          $ref: '#/components/schemas/Money'
+        reason:
+          type: string
+        status:
+          type: string
+          enum: [ISSUED]
+        issued_at:
+          type: string
+          format: date-time
+
+    Order:
+      type: object
+      required:
+        - id
+        - tracking_number
+        - package_status
+        - destination_address
+        - card_charged_amount
+        - payment_status
+        - is_deleted
+        - cancellation
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        tracking_number:
+          type: string
+          pattern: '^EF-[0-9]{4}-[0-9]{6}$'
+          example: EF-2026-000001
+        package_status:
+          type: string
+          enum: [PREPARING, IN_WAREHOUSE, IN_TRANSIT, CANCELLED]
+        destination_address:
+          type: string
+          minLength: 5
+          maxLength: 250
+        card_charged_amount:
+          $ref: '#/components/schemas/Money'
+        payment_status:
+          type: string
+          enum: [PENDING, PAID, REFUNDED]
+        is_deleted:
+          type: boolean
+        cancellation:
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/CancellationRequest'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrderResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          $ref: '#/components/schemas/Order'
+
+    OrderListResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+
+    CancellationResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          allOf:
+            - $ref: '#/components/schemas/Order'
+            - type: object
+              required: [credit_note, idempotent]
+              properties:
+                credit_note:
+                  nullable: true
+                  allOf:
+                    - $ref: '#/components/schemas/CreditNote'
+                idempotent:
+                  type: boolean
+
+    CreateOrderRequest:
+      type: object
+      required: [tracking_number, destination_address, card_charged_amount]
+      properties:
+        tracking_number:
+          type: string
+          pattern: '^EF-[0-9]{4}-[0-9]{6}$'
+          example: EF-2026-000100
+        destination_address:
+          type: string
+          minLength: 5
+          maxLength: 250
+          example: Av. Nueva 100, Lima
+        card_charged_amount:
+          type: number
+          format: double
+          exclusiveMinimum: true
+          minimum: 0
+          example: 75.25
+        currency:
+          type: string
+          enum: [PEN, USD]
+          default: PEN
+        payment_status:
+          type: string
+          enum: [PENDING, PAID]
+          default: PENDING
+
+    UpdateStatusRequest:
+      type: object
+      required: [estado]
+      properties:
+        estado:
+          type: string
+          enum: [IN_WAREHOUSE, IN_TRANSIT, CANCELLED]
+          description: |
+            Para cancelar use CANCELLED y envíe `motivo_cancelacion` y
+            `usuario_responsable`. Para avanzar use IN_WAREHOUSE o IN_TRANSIT.
+        motivo_cancelacion:
+          type: string
+          minLength: 5
+          maxLength: 500
+          description: Obligatorio cuando estado es CANCELLED.
+        usuario_responsable:
+          type: string
+          minLength: 1
+          description: Obligatorio cuando estado es CANCELLED.
+        monto_nota_credito:
+          type: number
+          format: double
+          minimum: 0
+          description: |
+            Opcional. Si se envía, debe coincidir exactamente con
+            card_charged_amount del envío.
+        moneda:
+          type: string
+          enum: [PEN, USD]
+          description: Moneda del monto de la nota de crédito.
+
+    UpdateAddressRequest:
+      type: object
+      required: [direccion_destino]
+      properties:
+        direccion_destino:
+          type: string
+          minLength: 5
+          maxLength: 250
+          example: Av. Javier Prado 2020, Lima
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: INVALID_ORDER_TRANSITION
+            message:
+              type: string
+              example: No se puede cancelar un envío que ya está en tránsito (IN_TRANSIT).
+            details:
+              nullable: true
