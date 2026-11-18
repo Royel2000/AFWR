@@ -22,7 +22,7 @@ export class AdvanceOrderStatusUseCase {
     const now = this.clock.now();
 
     switch (input.status) {
-      case OrderStatus.IN_WAREHOUSE:
+      case OrderStatus.WAREHOUSE:
         order.markInWarehouse(now);
         break;
       case OrderStatus.IN_TRANSIT:
@@ -30,7 +30,7 @@ export class AdvanceOrderStatusUseCase {
         break;
       default:
         throw new ValidationError(
-          `Transición de estado no soportada: "${input.status}". Use IN_WAREHOUSE o IN_TRANSIT, o el endpoint de cancelación.`,
+          `Transición de estado no soportada: "${input.status}". Use WAREHOUSE o IN_TRANSIT, o el endpoint de cancelación.`,
         );
     }
 

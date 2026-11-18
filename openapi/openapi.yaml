@@ -89,7 +89,7 @@ paths:
       summary: Actualiza el estado del envío o lo cancela
       description: |
         Permite avanzar el envío en la máquina de estados
-        (`PREPARING` -> `IN_WAREHOUSE` -> `IN_TRANSIT`) o cancelarlo
+        (`PREPARING` -> `WAREHOUSE` -> `IN_TRANSIT`) o cancelarlo
         enviando `estado: CANCELLED`.
 
         Para `CANCELLED`, `motivo_cancelacion` y `usuario_responsable` son
@@ -126,7 +126,7 @@ paths:
                   moneda: PEN
               avanzarAAlmacen:
                 value:
-                  estado: IN_WAREHOUSE
+                  estado: WAREHOUSE
               avanzarATransito:
                 value:
                   estado: IN_TRANSIT
@@ -192,7 +192,7 @@ paths:
       summary: Modifica la dirección de destino antes del despacho
       description: |
         HU-02. Permite modificar la dirección cuando el envío está en
-        `PREPARING` o `IN_WAREHOUSE`. Si el envío ya está en `IN_TRANSIT` o
+        `PREPARING` o `WAREHOUSE`. Si el envío ya está en `IN_TRANSIT` o
         `CANCELLED`, retorna 409 Conflict.
       operationId: updateDestinationAddress
       parameters:
@@ -367,7 +367,7 @@ components:
           example: EF-2026-000001
         package_status:
           type: string
-          enum: [PREPARING, IN_WAREHOUSE, IN_TRANSIT, CANCELLED]
+          enum: [PREPARING, WAREHOUSE, IN_TRANSIT, CANCELLED]
         destination_address:
           type: string
           minLength: 5
@@ -457,10 +457,10 @@ components:
       properties:
         estado:
           type: string
-          enum: [IN_WAREHOUSE, IN_TRANSIT, CANCELLED]
+          enum: [WAREHOUSE, IN_TRANSIT, CANCELLED]
           description: |
             Para cancelar use CANCELLED y envíe `motivo_cancelacion` y
-            `usuario_responsable`. Para avanzar use IN_WAREHOUSE o IN_TRANSIT.
+            `usuario_responsable`. Para avanzar use WAREHOUSE o IN_TRANSIT.
         motivo_cancelacion:
           type: string
           minLength: 5

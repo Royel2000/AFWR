@@ -28,7 +28,7 @@ const SEED_ORDERS: readonly SeedOrder[] = [
   {
     id: '22222222-2222-4222-8222-222222222222',
     trackingNumber: 'EF-2026-000002',
-    status: OrderStatus.IN_WAREHOUSE,
+    status: OrderStatus.WAREHOUSE,
     destinationAddress: 'Jr. Puno 456, Cusco',
     amount: 85.5,
     paymentStatus: PaymentStatus.PENDING,
@@ -52,7 +52,7 @@ const SEED_ORDERS: readonly SeedOrder[] = [
   {
     id: '55555555-5555-4555-8555-555555555555',
     trackingNumber: 'EF-2026-000005',
-    status: OrderStatus.IN_WAREHOUSE,
+    status: OrderStatus.WAREHOUSE,
     destinationAddress: 'Calle San Martín 250, Arequipa',
     amount: 99.99,
     paymentStatus: PaymentStatus.PAID,

@@ -40,12 +40,12 @@ export interface OrderPrimitives {
 
 const CANCELLABLE_STATUSES: readonly OrderStatus[] = [
   OrderStatus.PREPARING,
-  OrderStatus.IN_WAREHOUSE,
+  OrderStatus.WAREHOUSE,
 ];
 
 const ADDRESS_CHANGEABLE_STATUSES: readonly OrderStatus[] = [
   OrderStatus.PREPARING,
-  OrderStatus.IN_WAREHOUSE,
+  OrderStatus.WAREHOUSE,
 ];
 
 export class Order {
@@ -195,18 +195,18 @@ export class Order {
 
     if (this.props.status !== OrderStatus.PREPARING) {
       throw new InvalidOrderTransitionError(
-        `Transición inválida: no se puede pasar de ${this.props.status} a ${OrderStatus.IN_WAREHOUSE}.`,
+        `Transición inválida: no se puede pasar de ${this.props.status} a ${OrderStatus.WAREHOUSE}.`,
       );
     }
 
-    this.props.status = OrderStatus.IN_WAREHOUSE;
+    this.props.status = OrderStatus.WAREHOUSE;
     this.props.updatedAt = new Date(at.getTime());
   }
 
   markInTransit(at: Date): void {
     this.assertNotDeleted();
 
-    if (this.props.status !== OrderStatus.IN_WAREHOUSE) {
+    if (this.props.status !== OrderStatus.WAREHOUSE) {
       throw new InvalidOrderTransitionError(
         `Transición inválida: no se puede pasar de ${this.props.status} a ${OrderStatus.IN_TRANSIT}.`,
       );

@@ -60,8 +60,8 @@ src/
 
 | Historia de Usuario | Descripción de Negocio | Regla / Restricción de Dominio | Implementación Backend | Código HTTP Esperado |
 | :--- | :--- | :--- | :--- | :--- |
-| **HU-01** | Cancelación de envío antes del despacho | Válida en `PREPARING` e `IN_WAREHOUSE`. Se prohíbe en `IN_TRANSIT`. Es idempotente. | `CancelOrderUseCase` | `200 OK` (éxito) / `409 Conflict` (en ruta) |
-| **HU-02** | Modificación de dirección de destino | Permite actualizar la dirección antes de salir del almacén (`PREPARING`, `IN_WAREHOUSE`). | `UpdateDestinationAddressUseCase` | `200 OK` (actualizado) / `409 Conflict` (en ruta) |
+| **HU-01** | Cancelación de envío antes del despacho | Válida en `PREPARING` y `WAREHOUSE`. Se prohíbe en `IN_TRANSIT`. Es idempotente. | `CancelOrderUseCase` | `200 OK` (éxito) / `409 Conflict` (en ruta) |
+| **HU-02** | Modificación de dirección de destino | Permite actualizar la dirección antes de salir del almacén (`PREPARING`, `WAREHOUSE`). | `UpdateDestinationAddressUseCase` | `200 OK` (actualizado) / `409 Conflict` (en ruta) |
 | **HU-03** | Cancelación con pago procesado | Válido cuando `payment_status = PAID`. Genera `CreditNote`, valida el monto y notifica a Finanzas. | `CancelPaidOrderUseCase` | `200 OK` (nota emitida) / `400 Bad Request` (monto no coincide) |
 
 ---

@@ -143,11 +143,11 @@ export class OrderController {
     }
 
     if (
-      status !== OrderStatus.IN_WAREHOUSE &&
+      status !== OrderStatus.WAREHOUSE &&
       status !== OrderStatus.IN_TRANSIT
     ) {
       throw new ValidationError(
-        `Estado no permitido: "${status}". Use IN_WAREHOUSE, IN_TRANSIT o CANCELLED.`,
+        `Estado no permitido: "${status}". Use WAREHOUSE, IN_TRANSIT o CANCELLED.`,
       );
     }
 

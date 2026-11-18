@@ -145,7 +145,7 @@ describe('HU-01: cancelación antes del despacho', () => {
 
   it('es idempotente y no duplica la solicitud de cancelación', async () => {
     const fixture = buildFixture();
-    await seedOrder(fixture.orders, { status: OrderStatus.IN_WAREHOUSE });
+    await seedOrder(fixture.orders, { status: OrderStatus.WAREHOUSE });
 
     const first = await fixture.cancelOrder.execute({
       orderId: 'order-1',
@@ -187,9 +187,9 @@ describe('HU-01: cancelación antes del despacho', () => {
 });
 
 describe('HU-02: modificación de dirección de destino', () => {
-  it('permite modificar la dirección en IN_WAREHOUSE', async () => {
+  it('permite modificar la dirección en WAREHOUSE', async () => {
     const fixture = buildFixture();
-    await seedOrder(fixture.orders, { status: OrderStatus.IN_WAREHOUSE });
+    await seedOrder(fixture.orders, { status: OrderStatus.WAREHOUSE });
 
     const order = await fixture.updateDestinationAddress.execute({
       orderId: 'order-1',
@@ -220,7 +220,7 @@ describe('HU-03: cancelación con pago y nota de crédito', () => {
   it('genera una nota de crédito por el monto exacto y notifica a Finanzas', async () => {
     const fixture = buildFixture();
     await seedOrder(fixture.orders, {
-      status: OrderStatus.IN_WAREHOUSE,
+      status: OrderStatus.WAREHOUSE,
       paymentStatus: PaymentStatus.PAID,
       amount: 150.5,
     });
@@ -293,16 +293,16 @@ describe('HU-03: cancelación con pago y nota de crédito', () => {
 });
 
 describe('Máquina de estados', () => {
-  it('permite PREPARING -> IN_WAREHOUSE -> IN_TRANSIT', async () => {
+  it('permite PREPARING -> WAREHOUSE -> IN_TRANSIT', async () => {
     const fixture = buildFixture();
     await seedOrder(fixture.orders, { status: OrderStatus.PREPARING });
 
     const inWarehouse = await fixture.advanceOrderStatus.execute({
       orderId: 'order-1',
-      status: OrderStatus.IN_WAREHOUSE,
+      status: OrderStatus.WAREHOUSE,
     });
 
-    assert.equal(inWarehouse.status, OrderStatus.IN_WAREHOUSE);
+    assert.equal(inWarehouse.status, OrderStatus.WAREHOUSE);
 
     const inTransit = await fixture.advanceOrderStatus.execute({
       orderId: 'order-1',

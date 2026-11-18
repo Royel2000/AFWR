@@ -136,10 +136,10 @@ Al iniciar el servidor se cargan estos envíos:
 | UUID                                   | Guía            | Estado        | Pago    | Monto  |
 | -------------------------------------- | --------------- | ------------- | ------- | ------ |
 | `11111111-1111-4111-8111-111111111111` | `EF-2026-000001` | `PREPARING`   | `PENDING` | 120.00 |
-| `22222222-2222-4222-8222-222222222222` | `EF-2026-000002` | `IN_WAREHOUSE`| `PENDING` | 85.50  |
+| `22222222-2222-4222-8222-222222222222` | `EF-2026-000002` | `WAREHOUSE`| `PENDING` | 85.50  |
 | `33333333-3333-4333-8333-333333333333` | `EF-2026-000003` | `IN_TRANSIT`  | `PENDING` | 200.00 |
 | `44444444-4444-4444-8444-444444444444` | `EF-2026-000004` | `PREPARING`   | `PAID`    | 150.50 |
-| `55555555-5555-4555-8555-555555555555` | `EF-2026-000005` | `IN_WAREHOUSE`| `PAID`    | 99.99  |
+| `55555555-5555-4555-8555-555555555555` | `EF-2026-000005` | `WAREHOUSE`| `PAID`    | 99.99  |
 | `66666666-6666-4666-8666-666666666666` | `EF-2026-000006` | `IN_TRANSIT`  | `PAID`    | 300.00 |
 
 ## Ejemplos con curl
@@ -172,7 +172,7 @@ curl -X PATCH http://localhost:3000/envios/33333333-3333-4333-8333-333333333333/
   }'
 ```
 
-Modificar la dirección de un envío en `IN_WAREHOUSE` (HU-02):
+Modificar la dirección de un envío en `WAREHOUSE` (HU-02):
 
 ```bash
 curl -X PATCH http://localhost:3000/envios/22222222-2222-4222-8222-222222222222/direccion \
@@ -228,9 +228,9 @@ curl -X POST http://localhost:3000/envios \
 Transiciones permitidas:
 
 ```text
-PREPARING -> IN_WAREHOUSE -> IN_TRANSIT
+PREPARING -> WAREHOUSE -> IN_TRANSIT
 PREPARING -> CANCELLED
-IN_WAREHOUSE -> CANCELLED
+WAREHOUSE -> CANCELLED
 ```
 
 Transiciones prohibidas (HTTP `409 Conflict`):
@@ -243,14 +243,14 @@ Transiciones prohibidas (HTTP `409 Conflict`):
 
 ### HU-01: cancelación antes del despacho
 
-- Válida en `PREPARING` e `IN_WAREHOUSE`.
+- Válida en `PREPARING` y `WAREHOUSE`.
 - Registra `cancellation_reason`, fecha/hora y usuario responsable.
 - Es idempotente: una segunda cancelación no crea otra solicitud.
 - En `IN_TRANSIT` retorna `409 Conflict`.
 
 ### HU-02: modificación de dirección
 
-- Válida en `PREPARING` e `IN_WAREHOUSE`.
+- Válida en `PREPARING` y `WAREHOUSE`.
 - Se rechaza con `409 Conflict` si el envío ya está en `IN_TRANSIT` o
   `CANCELLED`.
 
