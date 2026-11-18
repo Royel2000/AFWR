@@ -23,7 +23,7 @@ export class AdvanceOrderStatusUseCase {
 
     switch (input.status) {
       case OrderStatus.WAREHOUSE:
-        order.markInWarehouse(now);
+        order.markWarehouse(now);
         break;
       case OrderStatus.IN_TRANSIT:
         order.markInTransit(now);

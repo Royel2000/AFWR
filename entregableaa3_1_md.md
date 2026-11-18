@@ -93,10 +93,32 @@ const cancelOrderUseCase = new CancelOrderUseCase(
   clock
 );
 
-export const orderController = new OrderController(
+const createOrderUseCase = new CreateOrderUseCase(
+  orderRepository,
+  idGenerator,
+  clock
+);
+
+const getOrderUseCase = new GetOrderUseCase(orderRepository);
+const listOrdersUseCase = new ListOrdersUseCase(orderRepository);
+
+const updateDestinationAddressUseCase = new UpdateDestinationAddressUseCase(
+  orderRepository,
+  clock
+);
+
+const advanceOrderStatusUseCase = new AdvanceOrderStatusUseCase(
+  orderRepository,
+  clock
+);
+
+const orderController = new OrderController(
+  createOrderUseCase,
+  getOrderUseCase,
+  listOrdersUseCase,
   cancelOrderUseCase,
-  updateAddressUseCase,
-  // ...demás casos de uso
+  updateDestinationAddressUseCase,
+  advanceOrderStatusUseCase
 );
 ```
 

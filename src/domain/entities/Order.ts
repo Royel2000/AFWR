@@ -190,7 +190,7 @@ export class Order {
     this.props.updatedAt = new Date(at.getTime());
   }
 
-  markInWarehouse(at: Date): void {
+  markWarehouse(at: Date): void {
     this.assertNotDeleted();
 
     if (this.props.status !== OrderStatus.PREPARING) {
